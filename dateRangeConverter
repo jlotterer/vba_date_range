@@ -1,0 +1,88 @@
+Sub ConvertDateRanges()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim cell As Range
+    Dim datePattern As String
+    Dim regEx As Object
+    Dim matches As Object
+    Dim startYear As String
+    Dim endYear As String
+    Dim fullStartYear As String
+    Dim fullEndYear As String
+    Dim originalText As String
+    Dim dateRangeFound As Boolean
+    
+    ' Set the active worksheet
+    Set ws = ActiveSheet
+    
+    ' Find the last row in column A
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    
+    ' Create RegEx object
+    Set regEx = CreateObject("VBScript.RegExp")
+    
+    ' Set pattern to match YY-YY format anywhere in the text
+    ' Pattern matches: 2 digits, hyphen, 2 digits
+    ' with word boundaries to ensure it's not part of a larger number
+    datePattern = "\b(\d{2})-(\d{2})\b"
+    
+    With regEx
+        .Pattern = datePattern
+        .Global = False  ' Changed to False to only get first match
+        .MultiLine = False
+    End With
+    
+    ' Loop through each cell in column A
+    For Each cell In ws.Range("A1:A" & lastRow)
+        If Not IsEmpty(cell) Then
+            originalText = cell.Value
+            dateRangeFound = False
+            
+            ' Check if cell contains the pattern
+            Set matches = regEx.Execute(originalText)
+            
+            If matches.Count > 0 Then
+                ' Process only the first match
+                startYear = matches(0).SubMatches(0)
+                endYear = matches(0).SubMatches(1)
+                
+                ' Convert to numeric to compare
+                'If CInt(startYear) < CInt(endYear) Then
+                    ' Determine century for start year
+                    If CInt(startYear) >= 26 Then
+                        fullStartYear = "19" & startYear
+                    Else
+                        fullStartYear = "20" & startYear
+                    End If
+                    
+                    ' Determine century for end year
+                    If CInt(endYear) >= 26 Then
+                        fullEndYear = "19" & endYear
+                    Else
+                        fullEndYear = "20" & endYear
+                    End If
+                    
+                    ' Copy text to column B with converted date range
+                    cell.Offset(0, 1).Value = Replace(originalText, _
+                        matches(0).Value, _
+                        fullStartYear & "-" & fullEndYear)
+                    
+                    ' Clear column C since we found a valid date range
+                    cell.Offset(0, 2).Value = ""
+                    
+                    dateRangeFound = True
+                'End If
+            End If
+            
+            ' If no valid date range was found, copy original text and mark as N/A
+            If Not dateRangeFound Then
+                cell.Offset(0, 1).Value = originalText
+                cell.Offset(0, 2).Value = "#N/A"
+            End If
+        End If
+    Next cell
+    
+    ' Clean up
+    Set regEx = Nothing
+End Sub
+
